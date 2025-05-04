@@ -1,103 +1,192 @@
-import Image from "next/image";
-
+"use client";
+import { useState } from "react";
+import { Todo } from "@/types/todo";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+// Todo app
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [input, setInput] = useState<string>("");
+  const [todos, setTodos] = useState<Todo[]>([]);
+  const [sort, setSort] = useState<string>("asc");
+  const [filter, setFilter] = useState<string>("all");
+  const [showFilter, setShowFilter] = useState<boolean>(false);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+  const filteredTodos = todos.filter((todo) => {
+    if (filter === "completed") return todo.completed;
+    if (filter === "not-completed") return !todo.completed;
+    return true; // Default to include all todos
+  });
+
+  const sortedTodos = [...filteredTodos].sort((a, b) => {
+    if (sort === "asc") {
+      //  incomplete todos first
+      if (a.completed && !b.completed) return 1;
+      if (!a.completed && b.completed) return -1;
+      //  sort by createdAt date
+      if (a.completed && b.completed) {
+        return (
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        );
+      }
+      return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    }
+    if (sort === "desc") {
+      //  incomplete todos first
+      if (a.completed && !b.completed) return 1;
+      if (!a.completed && b.completed) return -1;
+      //  sort by createdAt date
+      if (a.completed && b.completed) {
+        return (
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+      }
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    }
+    return 0;
+  });
+  return (
+    <>
+      <div className="flex flex-col items-center min-h-screen p-4">
+        <h1 className="text-4xl font-bold mb-4">Todo App</h1>
+        {/* Input and button*/}
+        <div className="flex items-center mb-4">
+          <form
+            className="flex items-center"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (input.trim() === "") return;
+              const newTodo: Todo = {
+                id: Date.now().toString(),
+                title: input,
+                completed: false,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+              };
+              setTodos([...todos, newTodo]);
+              setInput("");
+            }}
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+            <Input
+              placeholder="Type here..."
+              className="mr-2"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
             />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+            <Button type="submit">Add Todo</Button>
+          </form>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+        {/* Todo list header with title  */}
+        <h2 className="w-full max-w-md text-2xl font-bold text-left">
+          Todo List
+        </h2>
+        <div className="flex items-center mb-4 w-full max-w-md ">
+          <span className="text-gray-500">
+            {todos.length} {todos.length === 1 ? "todo" : "todos"}
+          </span>
+          <div className="ml-auto gap-2 flex">
+            {/* Filter buttons opens a popover there will be filters (asc, desc, completed, not completed, all) */}
+            <Popover open={showFilter} onOpenChange={setShowFilter}>
+              <PopoverTrigger asChild>
+                <Button variant="outline">Filter</Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-40">
+                <Label className="mb-2">Filter</Label>
+                <Select
+                  value={filter}
+                  onValueChange={(value) => setFilter(value)}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Filter" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="not-completed">Not Completed</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Label className="mt-4">Sort</Label>
+                <Select value={sort} onValueChange={(value) => setSort(value)}>
+                  <SelectTrigger className="w-full mt-2">
+                    <SelectValue placeholder="Sort" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="asc">Ascending</SelectItem>
+                    <SelectItem value="desc">Descending</SelectItem>
+                  </SelectContent>
+                </Select>
+              </PopoverContent>
+            </Popover>
+            {/* Delete all button */}
+            <Button
+              variant="destructive"
+              onClick={() => setTodos([])}
+              className="mr-2"
+            >
+              Delete All
+            </Button>
+          </div>
+        </div>
+        {/* Todo list items */}
+        <ul className="w-full max-w-md">
+          {sortedTodos.length === 0 ? (
+            <Card className="p-4 mb-2">
+              <p className="text-gray-500 text-center">No todos yet</p>
+            </Card>
+          ) : (
+            sortedTodos.map((todo) => (
+              <Card
+                key={todo.id}
+                className="flex flex-row justify-between items-center p-4 mb-2"
+              >
+                {/* Checkbox and todo title */}
+                <div className="flex items-center">
+                  <Checkbox
+                    checked={todo.completed}
+                    onCheckedChange={(checked) => {
+                      setTodos(
+                        todos.map((t) =>
+                          t.id === todo.id ? { ...t, completed: !!checked } : t
+                        )
+                      );
+                    }}
+                  />
+                  <span
+                    className={`ml-2 ${
+                      todo.completed ? "line-through text-gray-500" : ""
+                    }`}
+                  >
+                    {todo.title}
+                  </span>
+                </div>
+                {/* Delete button */}
+                <Button
+                  variant="destructive"
+                  onClick={() => {
+                    setTodos(todos.filter((t) => t.id !== todo.id));
+                  }}
+                >
+                  Delete
+                </Button>
+              </Card>
+            ))
+          )}
+        </ul>
+      </div>
+    </>
   );
 }
