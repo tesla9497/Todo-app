@@ -18,6 +18,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 // Todo app
 export default function Home() {
   const [input, setInput] = useState<string>("");
@@ -25,6 +36,8 @@ export default function Home() {
   const [sort, setSort] = useState<string>("asc");
   const [filter, setFilter] = useState<string>("all");
   const [showFilter, setShowFilter] = useState<boolean>(false);
+  // Alert for delete all
+  const [showAlert, setShowAlert] = useState<boolean>(false);
 
   const filteredTodos = todos.filter((todo) => {
     if (filter === "completed") return todo.completed;
@@ -64,9 +77,9 @@ export default function Home() {
       <div className="flex flex-col items-center min-h-screen p-4">
         <h1 className="text-4xl font-bold mb-4">Todo App</h1>
         {/* Input and button*/}
-        <div className="flex items-center mb-4">
+        <div className="flex items-center w-full max-w-md mb-4">
           <form
-            className="flex items-center"
+            className="flex items-center w-full max-w-md"
             onSubmit={(e) => {
               e.preventDefault();
               if (input.trim() === "") return;
@@ -83,7 +96,7 @@ export default function Home() {
           >
             <Input
               placeholder="Type here..."
-              className="mr-2"
+              className="w-full max-w-md mr-2"
               value={input}
               onChange={(e) => setInput(e.target.value)}
             />
@@ -132,15 +145,37 @@ export default function Home() {
               </PopoverContent>
             </Popover>
             {/* Delete all button */}
-            <Button
-              variant="destructive"
-              onClick={() => setTodos([])}
-              className="mr-2"
-            >
-              Delete All
-            </Button>
+            <AlertDialog open={showAlert} onOpenChange={setShowAlert}>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" disabled={todos.length === 0}>
+                  Delete All
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>
+                    Are you sure you want to delete all todos?
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => {
+                      setTodos([]);
+                      setShowAlert(false);
+                    }}
+                  >
+                    Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </div>
+
         {/* Todo list items */}
         <ul className="w-full max-w-md">
           {sortedTodos.length === 0 ? (
@@ -151,7 +186,7 @@ export default function Home() {
             sortedTodos.map((todo) => (
               <Card
                 key={todo.id}
-                className="flex flex-row justify-between items-center p-4 mb-2"
+                className="flex flex-row justify-between items-center p-2 mb-1"
               >
                 {/* Checkbox and todo title */}
                 <div className="flex items-center">
