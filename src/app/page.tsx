@@ -1,227 +1,130 @@
 "use client";
-import { useState } from "react";
-import { Todo } from "@/types/todo";
-import { Input } from "@/components/ui/input";
+
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-// Todo app
-export default function Home() {
-  const [input, setInput] = useState<string>("");
-  const [todos, setTodos] = useState<Todo[]>([]);
-  const [sort, setSort] = useState<string>("asc");
-  const [filter, setFilter] = useState<string>("all");
-  const [showFilter, setShowFilter] = useState<boolean>(false);
-  // Alert for delete all
-  const [showAlert, setShowAlert] = useState<boolean>(false);
+import { useStore } from "@/store";
 
-  const filteredTodos = todos.filter((todo) => {
-    if (filter === "completed") return todo.completed;
-    if (filter === "not-completed") return !todo.completed;
-    return true; // Default to include all todos
-  });
+export default function LandingPage() {
+  const { user, signInWithGoogle } = useStore();
+  const router = useRouter();
 
-  const sortedTodos = [...filteredTodos].sort((a, b) => {
-    if (sort === "asc") {
-      //  incomplete todos first
-      if (a.completed && !b.completed) return 1;
-      if (!a.completed && b.completed) return -1;
-      //  sort by createdAt date
-      if (a.completed && b.completed) {
-        return (
-          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-        );
-      }
-      return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+  useEffect(() => {
+    if (user) {
+      router.push("/home");
     }
-    if (sort === "desc") {
-      //  incomplete todos first
-      if (a.completed && !b.completed) return 1;
-      if (!a.completed && b.completed) return -1;
-      //  sort by createdAt date
-      if (a.completed && b.completed) {
-        return (
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        );
-      }
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-    }
-    return 0;
-  });
+  }, [user, router]);
+
   return (
-    <>
-      <div className="flex flex-col items-center min-h-screen p-4">
-        <h1 className="text-4xl font-bold mb-4">Todo App</h1>
-        {/* Input and button*/}
-        <div className="flex items-center w-full max-w-md mb-4">
-          <form
-            className="flex items-center w-full max-w-md"
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (input.trim() === "") return;
-              const newTodo: Todo = {
-                id: Date.now().toString(),
-                title: input,
-                completed: false,
-                createdAt: new Date(),
-                updatedAt: new Date(),
-              };
-              setTodos([...todos, newTodo]);
-              setInput("");
-            }}
-          >
-            <Input
-              placeholder="Type here..."
-              className="w-full max-w-md mr-2"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-            />
-            <Button type="submit">Add Todo</Button>
-          </form>
-        </div>
-        {/* Todo list header with title  */}
-        <h2 className="w-full max-w-md text-2xl font-bold text-left">
-          Todo List
-        </h2>
-        <div className="flex items-center mb-4 w-full max-w-md ">
-          <span className="text-gray-500">
-            {todos.length} {todos.length === 1 ? "todo" : "todos"}
-          </span>
-          <div className="ml-auto gap-2 flex">
-            {/* Filter buttons opens a popover there will be filters (asc, desc, completed, not completed, all) */}
-            <Popover open={showFilter} onOpenChange={setShowFilter}>
-              <PopoverTrigger asChild>
-                <Button variant="outline">Filter</Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-40">
-                <Label className="mb-2">Filter</Label>
-                <Select
-                  value={filter}
-                  onValueChange={(value) => setFilter(value)}
+    <div className="min-h-screen">
+      <div className="container mx-auto px-4 py-20">
+        <div className="text-center">
+          <h1 className="text-6xl font-bold mb-8 bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">
+            Organize Your Tasks with Ease
+          </h1>
+          <p className="text-xl mb-12 max-w-2xl mx-auto text-gray-600 leading-relaxed">
+            A simple, elegant todo app that helps you stay on top of your tasks.
+            Create, manage, and track your todos with our intuitive interface.
+          </p>
+          <div className="space-y-4">
+            {user ? (
+              <Link href="/todo">
+                <Button
+                  size="lg"
+                  className="text-lg px-8 py-6 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
                 >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Filter" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All</SelectItem>
-                    <SelectItem value="completed">Completed</SelectItem>
-                    <SelectItem value="not-completed">Not Completed</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Label className="mt-4">Sort</Label>
-                <Select value={sort} onValueChange={(value) => setSort(value)}>
-                  <SelectTrigger className="w-full mt-2">
-                    <SelectValue placeholder="Sort" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="asc">Ascending</SelectItem>
-                    <SelectItem value="desc">Descending</SelectItem>
-                  </SelectContent>
-                </Select>
-              </PopoverContent>
-            </Popover>
-            {/* Delete all button */}
-            <AlertDialog open={showAlert} onOpenChange={setShowAlert}>
-              <AlertDialogTrigger asChild>
-                <Button variant="destructive" disabled={todos.length === 0}>
-                  Delete All
+                  Go to Todo App
                 </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>
-                    Are you sure you want to delete all todos?
-                  </AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This action cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={() => {
-                      setTodos([]);
-                      setShowAlert(false);
-                    }}
-                  >
-                    Delete
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+              </Link>
+            ) : (
+              <Button
+                onClick={signInWithGoogle}
+                size="lg"
+                className="text-lg px-8 py-6 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+              >
+                Get Started with Google
+              </Button>
+            )}
           </div>
         </div>
 
-        {/* Todo list items */}
-        <ul className="w-full max-w-md">
-          {sortedTodos.length === 0 ? (
-            <Card className="p-4 mb-2">
-              <p className="text-gray-500 text-center">No todos yet</p>
-            </Card>
-          ) : (
-            sortedTodos.map((todo) => (
-              <Card
-                key={todo.id}
-                className="flex flex-row justify-between items-center p-2 mb-1"
+        <div className="mt-32 grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="bg-white p-8 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4">
+              <svg
+                className="w-6 h-6 text-blue-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
               >
-                {/* Checkbox and todo title */}
-                <div className="flex items-center">
-                  <Checkbox
-                    checked={todo.completed}
-                    onCheckedChange={(checked) => {
-                      setTodos(
-                        todos.map((t) =>
-                          t.id === todo.id ? { ...t, completed: !!checked } : t
-                        )
-                      );
-                    }}
-                  />
-                  <span
-                    className={`ml-2 ${
-                      todo.completed ? "line-through text-gray-500" : ""
-                    }`}
-                  >
-                    {todo.title}
-                  </span>
-                </div>
-                {/* Delete button */}
-                <Button
-                  variant="destructive"
-                  onClick={() => {
-                    setTodos(todos.filter((t) => t.id !== todo.id));
-                  }}
-                >
-                  Delete
-                </Button>
-              </Card>
-            ))
-          )}
-        </ul>
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M13 10V3L4 14h7v7l9-11h-7z"
+                ></path>
+              </svg>
+            </div>
+            <h3 className="text-xl text-gray-900 font-semibold mb-3">
+              Simple & Intuitive
+            </h3>
+            <p className="text-gray-600 leading-relaxed">
+              Clean interface designed for maximum productivity and ease of use.
+            </p>
+          </div>
+          <div className="bg-white p-8 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+            <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mb-4">
+              <svg
+                className="w-6 h-6 text-purple-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+                ></path>
+              </svg>
+            </div>
+            <h3 className="text-xl text-gray-900 font-semibold mb-3">
+              Smart Organization
+            </h3>
+            <p className="text-gray-600 leading-relaxed">
+              Sort and filter your tasks to keep your workflow organized.
+            </p>
+          </div>
+          <div className="bg-white p-8 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4">
+              <svg
+                className="w-6 h-6 text-blue-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                ></path>
+              </svg>
+            </div>
+            <h3 className="text-xl text-gray-900 font-semibold mb-3">
+              Track Progress
+            </h3>
+            <p className="text-gray-600 leading-relaxed">
+              Monitor your completed tasks and stay motivated with your
+              progress.
+            </p>
+          </div>
+        </div>
       </div>
-    </>
+    </div>
   );
 }
