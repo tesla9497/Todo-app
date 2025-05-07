@@ -23,7 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { TodoType } from "@/types/todo";
+import { TodoType, ProjectType } from "@/types/todo";
 import { useStore } from "@/store";
 import {
   DropdownMenu,
@@ -78,16 +78,30 @@ export default function HomePage() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isAddProjectDialogOpen, setIsAddProjectDialogOpen] = useState(false);
   const [taskToDelete, setTaskToDelete] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingTask, setEditingTask] = useState<TodoType | null>(null);
+  const [selectedProject, setSelectedProject] = useState<string | null>(null);
+  const [newProject, setNewProject] = useState({
+    name: "",
+    description: "",
+    color: "#6366f1",
+    clientName: "",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    createdBy: "current-user",
+  });
   const router = useRouter();
   const {
     todos,
+    projects,
     addTodo,
     updateTodo,
     deleteTodo,
+    addProject,
     subscribeToTodos,
+    subscribeToProjects,
     user,
     logout,
     setAvailableUsers,
@@ -97,9 +111,13 @@ export default function HomePage() {
   useEffect(() => {
     // Subscribe to todos updates
     if (!user) return;
-    const unsubscribe = subscribeToTodos(user.id, user);
-    return () => unsubscribe();
-  }, [subscribeToTodos, user]);
+    const unsubscribeTodos = subscribeToTodos(user.id, user);
+    const unsubscribeProjects = subscribeToProjects(user.id);
+    return () => {
+      unsubscribeTodos();
+      unsubscribeProjects();
+    };
+  }, [subscribeToTodos, subscribeToProjects, user]);
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -136,6 +154,7 @@ export default function HomePage() {
         status: "Pending",
         users: [],
         userId: "current-user",
+        projectId: null,
         createdAt: new Date().toISOString(),
         completedDate: null,
         createdBy: "current-user",
@@ -165,6 +184,7 @@ export default function HomePage() {
         priority: editingTask.priority,
         status: editingTask.status,
         users: editingTask.users,
+        projectId: editingTask.projectId,
         updatedAt: new Date().toISOString(),
       };
       await updateTodo(editingTask.id, updates);
@@ -204,11 +224,43 @@ export default function HomePage() {
     }
   };
 
-  const tasksOnHold = todos.filter(
+  const handleAddProject = async () => {
+    if (!newProject.name || isSubmitting) return;
+
+    try {
+      setIsSubmitting(true);
+      const project: ProjectType = {
+        ...newProject,
+        createdBy: user?.id || "current-user",
+      };
+
+      await addProject(project);
+      setIsAddProjectDialogOpen(false);
+      setNewProject({
+        name: "",
+        description: "",
+        color: "#6366f1",
+        clientName: "",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        createdBy: "current-user",
+      });
+    } catch (error) {
+      console.error("Error adding project:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const filteredTodos = selectedProject
+    ? todos.filter((todo) => todo.projectId === selectedProject)
+    : todos;
+
+  const tasksOnHold = filteredTodos.filter(
     (task: TodoType) =>
       task.status !== "Completed" && task.status !== "Cancelled"
   );
-  const tasksCompleted = todos.filter(
+  const tasksCompleted = filteredTodos.filter(
     (task: TodoType) =>
       task.status === "Completed" || task.status === "Cancelled"
   );
@@ -219,10 +271,11 @@ export default function HomePage() {
     priority: "",
     status: "Pending",
     users: [] as string[],
-    userId: "current-user", // This should be replaced with actual user ID
+    userId: "current-user",
+    projectId: null as string | null,
     createdAt: new Date().toISOString(),
     completedDate: null,
-    createdBy: "current-user", // This should be replaced with actual user ID
+    createdBy: "current-user",
     updatedAt: new Date().toISOString(),
   });
 
@@ -270,63 +323,218 @@ export default function HomePage() {
             <h2 className="text-4xl font-bold">
               You&apos;ve got{" "}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 font-extrabold">
-                {todos.length} tasks
+                {filteredTodos.length} tasks
               </span>{" "}
               today
             </h2>
           </div>
-          <Button
-            onClick={() => setIsAddDialogOpen(true)}
-            className="bg-gradient-to-r from-purple-500 via-pink-500 to-indigo-500 hover:from-purple-600 hover:via-pink-600 hover:to-indigo-600 text-white shadow-lg shadow-purple-500/20 hover:shadow-purple-500/30 transition-all duration-200 hover:scale-105 px-6 py-2 rounded-xl"
-          >
-            Add New
-          </Button>
+          <div className="flex gap-4">
+            <Select
+              value={selectedProject || "all"}
+              onValueChange={(value) =>
+                setSelectedProject(value === "all" ? null : value)
+              }
+            >
+              <SelectTrigger className="w-[200px] rounded-xl focus:border-purple-500 focus:ring-purple-500/20">
+                <SelectValue placeholder="All Projects" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Projects</SelectItem>
+                {projects.map((project) => (
+                  <SelectItem key={project.id} value={project.id || ""}>
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="w-3 h-3 rounded-full"
+                        style={{ backgroundColor: project.color }}
+                      />
+                      {project.name}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              onClick={() => setIsAddProjectDialogOpen(true)}
+              variant="outline"
+              className="rounded-xl"
+            >
+              New Project
+            </Button>
+            <Button
+              onClick={() => setIsAddDialogOpen(true)}
+              className="bg-gradient-to-r from-purple-500 via-pink-500 to-indigo-500 hover:from-purple-600 hover:via-pink-600 hover:to-indigo-600 text-white shadow-lg shadow-purple-500/20 hover:shadow-purple-500/30 transition-all duration-200 hover:scale-105 px-6 py-2 rounded-xl"
+            >
+              Add New Task
+            </Button>
+          </div>
         </div>
       </div>
 
-      {/* Add New Task Dialog */}
-      <AlertDialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-        <AlertDialogContent className="rounded-2xl border border-gray-100 shadow-xl">
+      {/* Add New Project Dialog */}
+      <AlertDialog
+        open={isAddProjectDialogOpen}
+        onOpenChange={setIsAddProjectDialogOpen}
+      >
+        <AlertDialogContent className="max-w-md">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-2xl font-bold">
-              Add New Task
-            </AlertDialogTitle>
-            <AlertDialogDescription className="">
-              Create a new task to track your progress
+            <AlertDialogTitle>Add New Project</AlertDialogTitle>
+            <AlertDialogDescription>
+              Create a new project to organize your tasks.
             </AlertDialogDescription>
           </AlertDialogHeader>
-
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="title" className="">
-                Task Title
+              <Label htmlFor="projectName" className="text-gray-700">
+                Project Name
+              </Label>
+              <Input
+                id="projectName"
+                value={newProject.name}
+                onChange={(e) =>
+                  setNewProject({ ...newProject, name: e.target.value })
+                }
+                placeholder="Enter project name"
+                className="rounded-xl focus:border-purple-500 focus:ring-purple-500/20"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="clientName" className="text-gray-700">
+                Client Name
+              </Label>
+              <Input
+                id="clientName"
+                value={newProject.clientName}
+                onChange={(e) =>
+                  setNewProject({ ...newProject, clientName: e.target.value })
+                }
+                placeholder="Enter client name"
+                className="rounded-xl focus:border-purple-500 focus:ring-purple-500/20"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="projectDescription" className="text-gray-700">
+                Description
+              </Label>
+              <Textarea
+                id="projectDescription"
+                value={newProject.description}
+                onChange={(e) =>
+                  setNewProject({ ...newProject, description: e.target.value })
+                }
+                placeholder="Enter project description"
+                className="rounded-xl focus:border-purple-500 focus:ring-purple-500/20"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="projectColor" className="text-gray-700">
+                Color
+              </Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="color"
+                  id="projectColor"
+                  value={newProject.color}
+                  onChange={(e) =>
+                    setNewProject({ ...newProject, color: e.target.value })
+                  }
+                  className="w-12 h-12 p-1 rounded-xl"
+                />
+                <span className="text-sm text-gray-500">
+                  Choose a color for your project
+                </span>
+              </div>
+            </div>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => setIsAddProjectDialogOpen(false)}
+              className="rounded-xl"
+            >
+              Cancel
+            </AlertDialogCancel>
+            <Button
+              onClick={handleAddProject}
+              disabled={
+                isSubmitting || !newProject.name || !newProject.clientName
+              }
+              className="bg-gradient-to-r from-purple-500 via-pink-500 to-indigo-500 hover:from-purple-600 hover:via-pink-600 hover:to-indigo-600 text-white shadow-lg shadow-purple-500/20 hover:shadow-purple-500/30 transition-all duration-200 hover:scale-105 px-6 py-2 rounded-xl"
+            >
+              {isSubmitting ? "Adding..." : "Add Project"}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Add New Task Dialog */}
+      <AlertDialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Add New Task</AlertDialogTitle>
+            <AlertDialogDescription>
+              Create a new task to track your progress.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="title" className="text-gray-700">
+                Title
               </Label>
               <Input
                 id="title"
-                placeholder="Enter task title"
                 value={newTask.title}
                 onChange={(e) =>
                   setNewTask({ ...newTask, title: e.target.value })
                 }
-                className="w-full rounded-xl focus:border-purple-500 focus:ring-purple-500/20"
+                placeholder="Enter task title"
+                className="rounded-xl focus:border-purple-500 focus:ring-purple-500/20"
               />
             </div>
-
             <div className="space-y-2">
-              <Label htmlFor="description" className="">
+              <Label htmlFor="description" className="text-gray-700">
                 Description
               </Label>
               <Textarea
                 id="description"
-                placeholder="Enter task description"
                 value={newTask.description}
                 onChange={(e) =>
                   setNewTask({ ...newTask, description: e.target.value })
                 }
-                className="w-full rounded-xl focus:border-purple-500 focus:ring-purple-500/20 min-h-[100px] resize-none"
+                placeholder="Enter task description"
+                className="rounded-xl focus:border-purple-500 focus:ring-purple-500/20"
               />
             </div>
-
+            <div className="space-y-2">
+              <Label htmlFor="project" className="text-gray-700">
+                Project
+              </Label>
+              <Select
+                value={newTask.projectId || "none"}
+                onValueChange={(value) =>
+                  setNewTask({
+                    ...newTask,
+                    projectId: value === "none" ? null : value,
+                  })
+                }
+              >
+                <SelectTrigger className="w-full rounded-xl focus:border-purple-500 focus:ring-purple-500/20">
+                  <SelectValue placeholder="Select project" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No Project</SelectItem>
+                  {projects.map((project) => (
+                    <SelectItem key={project.id} value={project.id || ""}>
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="w-3 h-3 rounded-full"
+                          style={{ backgroundColor: project.color }}
+                        />
+                        {project.name}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="space-y-2">
               <Label htmlFor="priority" className="text-gray-700">
                 Priority
@@ -347,7 +555,6 @@ export default function HomePage() {
                 </SelectContent>
               </Select>
             </div>
-
             <div className="space-y-2">
               <Label htmlFor="status" className="text-gray-700">
                 Status
@@ -368,66 +575,18 @@ export default function HomePage() {
                 </SelectContent>
               </Select>
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="users" className="text-gray-700">
-                Assign Users
-              </Label>
-              <Select
-                value={newTask.users[0] || ""}
-                onValueChange={(value) => {
-                  if (!newTask.users.includes(value)) {
-                    setNewTask({
-                      ...newTask,
-                      users: [...newTask.users, value],
-                    });
-                  }
-                }}
-              >
-                <SelectTrigger className="w-full rounded-xl focus:border-purple-500 focus:ring-purple-500/20">
-                  <SelectValue placeholder="Select users" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableUsers.map((user) => (
-                    <SelectItem key={user.id} value={user.id}>
-                      {user.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <div className="flex flex-wrap gap-2 mt-2">
-                {newTask.users.map((userId) => {
-                  const user = availableUsers.find((u) => u.id === userId);
-                  return user ? (
-                    <div
-                      key={userId}
-                      className="flex items-center gap-2 bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-sm"
-                    >
-                      <span>{user.name}</span>
-                      <button
-                        onClick={() => {
-                          setNewTask({
-                            ...newTask,
-                            users: newTask.users.filter((id) => id !== userId),
-                          });
-                        }}
-                        className="hover:text-purple-900"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ) : null;
-                })}
-              </div>
-            </div>
           </div>
-
-          <AlertDialogFooter className="gap-2">
-            <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => setIsAddDialogOpen(false)}
+              className="rounded-xl"
+            >
+              Cancel
+            </AlertDialogCancel>
             <Button
               onClick={handleAddTask}
-              disabled={isSubmitting}
-              className="bg-gradient-to-r from-purple-500 via-pink-500 to-indigo-500 hover:from-purple-600 hover:via-pink-600 hover:to-indigo-600 text-white rounded-xl"
+              disabled={isSubmitting || !newTask.title || !newTask.priority}
+              className="bg-gradient-to-r from-purple-500 via-pink-500 to-indigo-500 hover:from-purple-600 hover:via-pink-600 hover:to-indigo-600 text-white shadow-lg shadow-purple-500/20 hover:shadow-purple-500/30 transition-all duration-200 hover:scale-105 px-6 py-2 rounded-xl"
             >
               {isSubmitting ? "Adding..." : "Add Task"}
             </Button>
@@ -480,6 +639,40 @@ export default function HomePage() {
                 }
                 className="w-full rounded-xl focus:border-purple-500 focus:ring-purple-500/20 min-h-[100px] resize-none"
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-project" className="text-gray-700">
+                Project
+              </Label>
+              <Select
+                value={editingTask?.projectId || "none"}
+                onValueChange={(value) =>
+                  setEditingTask((prev) =>
+                    prev
+                      ? { ...prev, projectId: value === "none" ? null : value }
+                      : null
+                  )
+                }
+              >
+                <SelectTrigger className="w-full rounded-xl focus:border-purple-500 focus:ring-purple-500/20">
+                  <SelectValue placeholder="Select project" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No Project</SelectItem>
+                  {projects.map((project) => (
+                    <SelectItem key={project.id} value={project.id || ""}>
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="w-3 h-3 rounded-full"
+                          style={{ backgroundColor: project.color }}
+                        />
+                        {project.name}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">
@@ -681,6 +874,24 @@ export default function HomePage() {
                                     <span className="flex-1 font-medium group-hover:text-purple-600 transition-colors duration-200 text-left">
                                       {task.title}
                                     </span>
+                                    {task.projectId && (
+                                      <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-100 text-gray-600 text-xs font-medium">
+                                        <div
+                                          className="w-2 h-2 rounded-full"
+                                          style={{
+                                            backgroundColor:
+                                              projects.find(
+                                                (p) => p.id === task.projectId
+                                              )?.color || "#6366f1",
+                                          }}
+                                        />
+                                        {
+                                          projects.find(
+                                            (p) => p.id === task.projectId
+                                          )?.name
+                                        }
+                                      </div>
+                                    )}
                                     <Select
                                       value={task.status}
                                       onValueChange={(value) => {
@@ -805,6 +1016,24 @@ export default function HomePage() {
                                     <span className="flex-1 font-medium group-hover:text-purple-600 transition-colors duration-200 text-left">
                                       {task.title}
                                     </span>
+                                    {task.projectId && (
+                                      <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-100 text-gray-600 text-xs font-medium">
+                                        <div
+                                          className="w-2 h-2 rounded-full"
+                                          style={{
+                                            backgroundColor:
+                                              projects.find(
+                                                (p) => p.id === task.projectId
+                                              )?.color || "#6366f1",
+                                          }}
+                                        />
+                                        {
+                                          projects.find(
+                                            (p) => p.id === task.projectId
+                                          )?.name
+                                        }
+                                      </div>
+                                    )}
                                     <Select
                                       value={task.status}
                                       onValueChange={(value) => {
