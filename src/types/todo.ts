@@ -24,6 +24,7 @@ export interface TodoType {
   projectId: string | null;
   createdAt: string;
   completedDate: string | null;
+  estimatedDate: string | null;
   createdBy: string;
   updatedAt: string;
 }

@@ -43,6 +43,7 @@ import { UserType } from "@/types/user";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import Image from "next/image";
+import { DatePicker } from "@/components/ui/date-picker";
 
 function AvatarGroup({ users }: { users: string[] }) {
   const { availableUsers } = useStore();
@@ -157,6 +158,7 @@ export default function HomePage() {
         projectId: null,
         createdAt: new Date().toISOString(),
         completedDate: null,
+        estimatedDate: null,
         createdBy: "current-user",
         updatedAt: new Date().toISOString(),
       });
@@ -185,6 +187,7 @@ export default function HomePage() {
         status: editingTask.status,
         users: editingTask.users,
         projectId: editingTask.projectId,
+        estimatedDate: editingTask.estimatedDate,
         updatedAt: new Date().toISOString(),
       };
       await updateTodo(editingTask.id, updates);
@@ -274,7 +277,8 @@ export default function HomePage() {
     userId: "current-user",
     projectId: null as string | null,
     createdAt: new Date().toISOString(),
-    completedDate: null,
+    completedDate: null as string | null,
+    estimatedDate: null as string | null,
     createdBy: "current-user",
     updatedAt: new Date().toISOString(),
   });
@@ -476,9 +480,7 @@ export default function HomePage() {
           </AlertDialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="title" className="text-gray-700">
-                Title
-              </Label>
+              <Label htmlFor="title">Title</Label>
               <Input
                 id="title"
                 value={newTask.title}
@@ -490,9 +492,7 @@ export default function HomePage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="description" className="text-gray-700">
-                Description
-              </Label>
+              <Label htmlFor="description">Description</Label>
               <Textarea
                 id="description"
                 value={newTask.description}
@@ -504,9 +504,7 @@ export default function HomePage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="project" className="text-gray-700">
-                Project
-              </Label>
+              <Label htmlFor="project">Project</Label>
               <Select
                 value={newTask.projectId || "none"}
                 onValueChange={(value) =>
@@ -556,9 +554,7 @@ export default function HomePage() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="status" className="text-gray-700">
-                Status
-              </Label>
+              <Label htmlFor="status">Status</Label>
               <Select
                 value={newTask.status}
                 onValueChange={(value) =>
@@ -574,6 +570,22 @@ export default function HomePage() {
                   <SelectItem value="Completed">Completed</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="estimatedDate">Estimated Completion Date</Label>
+              <DatePicker
+                date={
+                  newTask.estimatedDate
+                    ? new Date(newTask.estimatedDate)
+                    : undefined
+                }
+                onDateChange={(date) =>
+                  setNewTask({
+                    ...newTask,
+                    estimatedDate: date ? date.toISOString() : null,
+                  })
+                }
+              />
             </div>
           </div>
           <AlertDialogFooter>
@@ -642,9 +654,7 @@ export default function HomePage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="edit-project" className="text-gray-700">
-                Project
-              </Label>
+              <Label htmlFor="edit-project">Project</Label>
               <Select
                 value={editingTask?.projectId || "none"}
                 onValueChange={(value) =>
@@ -676,9 +686,7 @@ export default function HomePage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="edit-priority" className="text-gray-700">
-                Priority
-              </Label>
+              <Label htmlFor="edit-priority">Priority</Label>
               <Select
                 value={editingTask?.priority || ""}
                 onValueChange={(value) =>
@@ -723,9 +731,30 @@ export default function HomePage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="edit-users" className="text-gray-700">
-                Assign Users
+              <Label htmlFor="edit-estimatedDate">
+                Estimated Completion Date
               </Label>
+              <DatePicker
+                date={
+                  editingTask?.estimatedDate
+                    ? new Date(editingTask.estimatedDate)
+                    : undefined
+                }
+                onDateChange={(date) =>
+                  setEditingTask((prev) =>
+                    prev
+                      ? {
+                          ...prev,
+                          estimatedDate: date ? date.toISOString() : null,
+                        }
+                      : null
+                  )
+                }
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-users">Assign Users</Label>
               <Select
                 value=""
                 onValueChange={(value) => {
@@ -928,6 +957,16 @@ export default function HomePage() {
                                     >
                                       {task.priority}
                                     </span>
+                                    {task.estimatedDate && (
+                                      <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-100 text-blue-600 text-xs font-medium">
+                                        <span>
+                                          Due:{" "}
+                                          {new Date(
+                                            task.estimatedDate
+                                          ).toLocaleDateString()}
+                                        </span>
+                                      </div>
+                                    )}
                                     <AvatarGroup users={task.users} />
                                     <DropdownMenu>
                                       <DropdownMenuTrigger asChild>
@@ -1070,6 +1109,16 @@ export default function HomePage() {
                                     >
                                       {task.priority}
                                     </span>
+                                    {task.estimatedDate && (
+                                      <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-100 text-blue-600 text-xs font-medium">
+                                        <span>
+                                          Due:{" "}
+                                          {new Date(
+                                            task.estimatedDate
+                                          ).toLocaleDateString()}
+                                        </span>
+                                      </div>
+                                    )}
                                     <AvatarGroup users={task.users} />
                                     <DropdownMenu>
                                       <DropdownMenuTrigger asChild>
